@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use std::ops::DerefMut;
+
+use bevy::{input::keyboard::Key, prelude::*, render::view::Hdr};
+use smol_str::SmolStr;
 
 const CAMERA_SPEED: f32 = 5000.;
 /// How quickly should the camera snap to the desired location.
@@ -10,15 +13,15 @@ impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.world_mut().spawn((
             Camera2d,
-            OrthographicProjection {
+            Projection::Orthographic(OrthographicProjection {
                 far: 10000.,
                 scale: 128.0,
                 ..OrthographicProjection::default_2d()
-            },
+            }),
             Camera {
-                hdr: true,
                 ..Default::default()
             },
+            Hdr,
         ));
         app.add_systems(Update, (move_camera, zoom_camera));
     }
@@ -75,25 +78,27 @@ pub fn move_camera(
 }
 
 fn zoom_camera(
-    mut camera: Single<&mut OrthographicProjection, With<Camera2d>>,
-    mut scroll: EventReader<bevy::input::mouse::MouseWheel>,
-    kb_input: Res<ButtonInput<KeyCode>>,
+    mut camera: Single<&mut Projection, With<Camera2d>>,
+    mut scroll: MessageReader<bevy::input::mouse::MouseWheel>,
+    kb_input: Res<ButtonInput<Key>>,
     time: Res<Time>,
 ) {
-    if kb_input.pressed(KeyCode::KeyR) {
-        camera.scale = 1.;
-        return;
-    }
+    if let Projection::Orthographic(camera) = &mut **camera {
+        if kb_input.pressed(Key::Character(SmolStr::new("r"))) {
+            camera.scale = 1.;
+            return;
+        }
 
-    // for event in scroll.read() {
-    //     camera.scale *= event.y * time.delta_secs() * 0.01;
-    // }
+        // for event in scroll.read() {
+        //     camera.scale *= event.y * time.delta_secs() * 0.01;
+        // }
 
-    if kb_input.pressed(KeyCode::NumpadAdd) {
-        camera.scale *= 0.5f32.powf(time.delta_secs());
-    }
+        if kb_input.pressed(Key::Character(SmolStr::new("+"))) {
+            camera.scale *= 0.5f32.powf(time.delta_secs());
+        }
 
-    if kb_input.pressed(KeyCode::NumpadSubtract) {
-        camera.scale *= 2.0f32.powf(time.delta_secs());
-    }
+        if kb_input.pressed(Key::Character(SmolStr::new("-"))) {
+            camera.scale *= 2.0f32.powf(time.delta_secs());
+        }
+    };
 }
